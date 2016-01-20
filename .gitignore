@@ -1,3 +1,4 @@
+
 # Built application files
 *.apk
 *.ap_
@@ -28,5 +29,9 @@ proguard/
 # Android Studio Navigation editor temp files
 .navigation/
 
-# Android Studio captures folder
+# Android Studio
+*.iml
+.idea
+.gradle
+build/
 captures/
