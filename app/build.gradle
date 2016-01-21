@@ -32,4 +32,10 @@ dependencies {
     compile 'com.android.support:recyclerview-v7:' + ext.supportLibVersion
     compile 'com.android.support:cardview-v7:' + ext.supportLibVersion
     compile 'com.android.support:design:' + ext.supportLibVersion
+
+    // picasso
+    compile 'com.squareup.picasso:picasso:2.5.2'
+
+    //Glide
+    compile 'com.github.bumptech.glide:glide:3.6.1'
 }
