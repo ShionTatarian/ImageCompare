@@ -3,6 +3,7 @@ package fi.qvik.imagecompare.util;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
+import android.support.annotation.NonNull;
 import android.text.TextUtils;
 
 import com.bumptech.glide.Glide;
@@ -10,12 +11,16 @@ import com.bumptech.glide.RequestManager;
 import com.bumptech.glide.load.resource.drawable.GlideDrawable;
 import com.bumptech.glide.request.RequestListener;
 import com.bumptech.glide.request.target.Target;
+import com.facebook.drawee.backends.pipeline.Fresco;
 import com.squareup.picasso.Callback;
 import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
+import fi.qvik.imagecompare.R;
 import fi.qvik.imagecompare.list.ImageVH;
 
 /**
@@ -24,7 +29,6 @@ import fi.qvik.imagecompare.list.ImageVH;
 public class ImageUtil {
 
     private static ImageUtil instance;
-
     private final List<String> list = new ArrayList<String>() {{
         add("https://images.unsplash.com/photo-1450101215322-bf5cd27642fc?crop=entropy&fit=crop&fm=jpg&h=950&ixjsv=2.1.0&ixlib=rb-0.3.5&q=80&w=1675");
         add("https://images.unsplash.com/photo-1442406964439-e46ab8eff7c4?crop=entropy&fit=crop&fm=jpg&h=1100&ixjsv=2.1.0&ixlib=rb-0.3.5&q=80&w=1675");
@@ -46,6 +50,7 @@ public class ImageUtil {
     }};
 
     private final String TAG = "ImageUtil";
+    private final ExecutorService threadPool;
     private final Handler uiHandler = new Handler(Looper.getMainLooper());
     private final Context context;
     private ImageServiceProvider provider = ImageServiceProvider.GLIDE;
@@ -55,14 +60,26 @@ public class ImageUtil {
 
     public enum ImageServiceProvider {
 
-        PICASSO,
+        PICASSO                 (R.id.settings_picasso_radio_button),
+        GLIDE                   (R.id.settings_glide_radio_button),
+        FRESCO                  (R.id.settings_fresco_radio_button),
+        UNIVERSAL_IMAGE_LOADER  (R.id.settings_universal_image_loader),
 
-        GLIDE,;
+        ;
+
+        public final int checkBoxID;
+
+        ImageServiceProvider(int checkBoxID) {
+            this.checkBoxID = checkBoxID;
+        }
 
     }
 
     private ImageUtil(Context ctx) {
         this.context = ctx;
+        threadPool = Executors.newFixedThreadPool(5);
+
+        Fresco.initialize(context);
         picasso = Picasso.with(ctx);
         glide = Glide.with(ctx);
     }
@@ -82,22 +99,42 @@ public class ImageUtil {
         return instance;
     }
 
-    public void clearCache() {
-        switch (provider) {
-            case PICASSO:
-                clearPicassoCache(context);
-                break;
-        }
+    public void setProvider(@NonNull ImageServiceProvider provider) {
+        this.provider = provider;
+        clearCache(null);
+        QLog.d(TAG, "New provider: %s", provider);
+    }
+
+    public ImageServiceProvider getProvider() {
+        return provider;
+    }
+
+    public void clearCache(final Runnable callback) {
+        threadPool.execute(new Runnable() {
+            @Override
+            public void run() {
+                clearPicassoCache();
+                clearGlideCache(); // glide cache clear needs to be run outside UI thread
+
+                if(callback != null) {
+                    runOnUiThread(callback);
+                }
+            }
+        });
+    }
+
+    public void clearGlideCache() {
+        Glide g = Glide.get(context);
+        g.clearDiskCache();
     }
 
     public List<String> getImageList() {
         return list;
     }
 
-    private void clearPicassoCache(Context ctx) {
-        Picasso p = Picasso.with(ctx);
+    public void clearPicassoCache() {
         for (String url : list) {
-            p.invalidate(url);
+            picasso.invalidate(url);
         }
     }
 
@@ -108,7 +145,7 @@ public class ImageUtil {
         } else if (TextUtils.isEmpty(holder.url)) {
             QLog.w(TAG, "Url is null");
         }
-
+        holder.image.setTag(R.color.color_primary, url);
         holder.text.setText("Loading...");
 
         QLog.d(TAG, "set[%s]Image[%s]", provider, url);
@@ -119,10 +156,15 @@ public class ImageUtil {
             case GLIDE:
                 setGlideImage(holder, url);
                 break;
+            case FRESCO:
+                setFrescoImage(holder, url);
+                break;
 
         }
+    }
 
-
+    private void setFrescoImage(ImageVH holder, String url) {
+        Fresco.getImagePipeline().
     }
 
     private void setGlideImage(final ImageVH holder, final String url) {
@@ -133,7 +175,7 @@ public class ImageUtil {
                     @Override
                     public boolean onException(Exception e, String model, Target<GlideDrawable> target, boolean isFirstResource) {
                         QLog.e(e, TAG, "Glide onException");
-                        return false;
+                        return false; // if false Glide automatically assign the fail image
                     }
 
                     @Override
@@ -141,7 +183,7 @@ public class ImageUtil {
                         QLog.i(TAG, "Glide onResourceReady");
                         onImageReady(holder, url, start);
 
-                        return false;
+                        return false; // if false Glide automatically assign the image
                     }
                 })
                 .into(holder.image);
@@ -149,23 +191,24 @@ public class ImageUtil {
     }
 
     private void onImageReady(ImageVH holder, String url, long start) {
-        if (url.equals(holder.url)) {
+        if (url.equals(holder.image.getTag(R.color.color_primary))) {
             QLog.i(TAG, "Image[%s] load success & correct place", url);
             holder.text.setText(getData(start));
         } else {
-            QLog.w(TAG, "Image[%s] load success, WRONG place", url);
-            holder.text.setText("Wrong url!?");
+            QLog.w(TAG, "Image[%s] load problem, WRONG place", url);
+            holder.text.setText(String.format("%s wrong url!?", provider));
         }
     }
 
     private String getData(long start) {
-        return String.format("time: %sms", Long.toString(System.currentTimeMillis() - start));
+        int time = (int) (System.currentTimeMillis() - start);
+        return String.format("%s time: %dms", provider, time);
     }
 
     private void setPicassoImage(final ImageVH holder, final String url) {
         final long start = System.currentTimeMillis();
         picasso.load(url)
-                .resize(500, 500)
+                .resize(500, 500) // if image too large app crashes!
                 .into(holder.image, new Callback() {
                     @Override
                     public void onSuccess() {
@@ -180,7 +223,7 @@ public class ImageUtil {
                     @Override
                     public void onError() {
                         QLog.e(TAG, "Image[%s] load error", url);
-                        holder.text.setText("Error loading");
+                        holder.text.setText("Picasso Error loading");
                     }
                 });
 
