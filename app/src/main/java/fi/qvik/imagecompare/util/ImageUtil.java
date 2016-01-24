@@ -1,10 +1,12 @@
 package fi.qvik.imagecompare.util;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.os.Handler;
 import android.os.Looper;
 import android.support.annotation.NonNull;
 import android.text.TextUtils;
+import android.view.View;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.RequestManager;
@@ -12,6 +14,19 @@ import com.bumptech.glide.load.resource.drawable.GlideDrawable;
 import com.bumptech.glide.request.RequestListener;
 import com.bumptech.glide.request.target.Target;
 import com.facebook.drawee.backends.pipeline.Fresco;
+import com.nostra13.universalimageloader.cache.disc.impl.UnlimitedDiskCache;
+import com.nostra13.universalimageloader.cache.disc.naming.HashCodeFileNameGenerator;
+import com.nostra13.universalimageloader.cache.memory.impl.LruMemoryCache;
+import com.nostra13.universalimageloader.core.DisplayImageOptions;
+import com.nostra13.universalimageloader.core.ImageLoader;
+import com.nostra13.universalimageloader.core.ImageLoaderConfiguration;
+import com.nostra13.universalimageloader.core.assist.FailReason;
+import com.nostra13.universalimageloader.core.assist.QueueProcessingType;
+import com.nostra13.universalimageloader.core.decode.BaseImageDecoder;
+import com.nostra13.universalimageloader.core.display.FadeInBitmapDisplayer;
+import com.nostra13.universalimageloader.core.download.BaseImageDownloader;
+import com.nostra13.universalimageloader.core.listener.ImageLoadingListener;
+import com.nostra13.universalimageloader.core.listener.ImageLoadingProgressListener;
 import com.squareup.picasso.Callback;
 import com.squareup.picasso.Picasso;
 
@@ -57,6 +72,7 @@ public class ImageUtil {
 
     private final Picasso picasso;
     private final RequestManager glide;
+    private final ImageLoader universalImageLoader;
 
     public enum ImageServiceProvider {
 
@@ -82,6 +98,15 @@ public class ImageUtil {
         Fresco.initialize(context);
         picasso = Picasso.with(ctx);
         glide = Glide.with(ctx);
+        universalImageLoader = ImageLoader.getInstance();
+        ImageLoaderConfiguration config = new ImageLoaderConfiguration.Builder(context)
+                .diskCache(new UnlimitedDiskCache(ctx.getCacheDir())) // default
+                .diskCacheSize(50 * 1024 * 1024)
+                .diskCacheFileCount(100)
+                .diskCacheFileNameGenerator(new HashCodeFileNameGenerator()) // default
+//                .writeDebugLogs()
+                .build();
+        universalImageLoader.init(config);
     }
 
     public static void init(Context ctx) {
@@ -115,6 +140,7 @@ public class ImageUtil {
             public void run() {
                 clearPicassoCache();
                 clearGlideCache(); // glide cache clear needs to be run outside UI thread
+                clearUniversalImageLoaderCache();
 
                 if(callback != null) {
                     runOnUiThread(callback);
@@ -126,6 +152,11 @@ public class ImageUtil {
     public void clearGlideCache() {
         Glide g = Glide.get(context);
         g.clearDiskCache();
+    }
+
+    public void clearUniversalImageLoaderCache() {
+        universalImageLoader.clearDiskCache();
+        universalImageLoader.clearMemoryCache();
     }
 
     public List<String> getImageList() {
@@ -159,12 +190,45 @@ public class ImageUtil {
             case FRESCO:
                 setFrescoImage(holder, url);
                 break;
+            case UNIVERSAL_IMAGE_LOADER:
+                setUniversalImage(holder, url);
+                break;
 
         }
     }
 
+    private void setUniversalImage(final ImageVH holder, final String url) {
+        final long start = System.currentTimeMillis();
+        DisplayImageOptions options = new DisplayImageOptions.Builder()
+                .resetViewBeforeLoading(true)
+                .cacheOnDisk(true)
+                .displayer(new FadeInBitmapDisplayer(400))
+                .build();
+
+        universalImageLoader.displayImage(url, holder.image, options, new ImageLoadingListener() {
+            @Override
+            public void onLoadingStarted(String imageUri, View view) {
+            }
+            @Override
+            public void onLoadingFailed(String imageUri, View view, FailReason failReason) {
+            }
+            @Override
+            public void onLoadingComplete(String imageUri, View view, Bitmap loadedImage) {
+                onImageReady(holder, url, start);
+            }
+            @Override
+            public void onLoadingCancelled(String imageUri, View view) {
+            }
+        }, new ImageLoadingProgressListener() {
+            @Override
+            public void onProgressUpdate(String imageUri, View view, int current, int total) {
+//                QLog.d(TAG, "UIL[%s] progress: %d / %d", imageUri, current, total);
+            }
+        });
+    }
+
     private void setFrescoImage(ImageVH holder, String url) {
-        Fresco.getImagePipeline().
+        // TODO
     }
 
     private void setGlideImage(final ImageVH holder, final String url) {
