@@ -31,9 +31,11 @@
         <activity
             android:name=".gif.GifActivity"
             android:label="GifActivity"
-            >
-
-        </activity>
+            />
+        <activity
+            android:name=".fresco.FrescoListActivity"
+            android:label="FrescoListActivity"
+        />
 
     </application>
 

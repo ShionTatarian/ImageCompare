@@ -1,12 +1,17 @@
 package fi.qvik.imagecompare.util;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
+import android.graphics.drawable.Animatable;
+import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
+import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.text.TextUtils;
 import android.view.View;
+import android.widget.TextView;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.RequestManager;
@@ -14,6 +19,10 @@ import com.bumptech.glide.load.resource.drawable.GlideDrawable;
 import com.bumptech.glide.request.RequestListener;
 import com.bumptech.glide.request.target.Target;
 import com.facebook.drawee.backends.pipeline.Fresco;
+import com.facebook.drawee.controller.BaseControllerListener;
+import com.facebook.drawee.controller.ControllerListener;
+import com.facebook.drawee.interfaces.DraweeController;
+import com.facebook.imagepipeline.image.ImageInfo;
 import com.nostra13.universalimageloader.cache.disc.impl.UnlimitedDiskCache;
 import com.nostra13.universalimageloader.cache.disc.naming.HashCodeFileNameGenerator;
 import com.nostra13.universalimageloader.cache.memory.impl.LruMemoryCache;
@@ -36,6 +45,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import fi.qvik.imagecompare.R;
+import fi.qvik.imagecompare.fresco.FrescoImageVH;
 import fi.qvik.imagecompare.list.ImageVH;
 
 /**
@@ -65,6 +75,7 @@ public class ImageUtil {
     }};
 
     private final String TAG = "ImageUtil";
+    private final String PREFERENCE_PROVIDER = "provider";
     private final ExecutorService threadPool;
     private final Handler uiHandler = new Handler(Looper.getMainLooper());
     private final Context context;
@@ -73,15 +84,14 @@ public class ImageUtil {
     private final Picasso picasso;
     private final RequestManager glide;
     private final ImageLoader universalImageLoader;
+    private final SharedPreferences preferences;
 
     public enum ImageServiceProvider {
 
-        PICASSO                 (R.id.settings_picasso_radio_button),
-        GLIDE                   (R.id.settings_glide_radio_button),
-        FRESCO                  (R.id.settings_fresco_radio_button),
-        UNIVERSAL_IMAGE_LOADER  (R.id.settings_universal_image_loader),
-
-        ;
+        PICASSO(R.id.settings_picasso_radio_button),
+        GLIDE(R.id.settings_glide_radio_button),
+        FRESCO(R.id.settings_fresco_radio_button),
+        UNIVERSAL_IMAGE_LOADER(R.id.settings_universal_image_loader),;
 
         public final int checkBoxID;
 
@@ -94,6 +104,9 @@ public class ImageUtil {
     private ImageUtil(Context ctx) {
         this.context = ctx;
         threadPool = Executors.newFixedThreadPool(5);
+
+        this.preferences = PreferenceManager.getDefaultSharedPreferences(ctx);
+        provider = ImageServiceProvider.values()[preferences.getInt(PREFERENCE_PROVIDER, ImageServiceProvider.GLIDE.ordinal())];
 
         Fresco.initialize(context);
         picasso = Picasso.with(ctx);
@@ -128,6 +141,8 @@ public class ImageUtil {
         this.provider = provider;
         clearCache(null);
         QLog.d(TAG, "New provider: %s", provider);
+
+        preferences.edit().putInt(PREFERENCE_PROVIDER, provider.ordinal()).apply();
     }
 
     public ImageServiceProvider getProvider() {
@@ -142,7 +157,7 @@ public class ImageUtil {
                 clearGlideCache(); // glide cache clear needs to be run outside UI thread
                 clearUniversalImageLoaderCache();
 
-                if(callback != null) {
+                if (callback != null) {
                     runOnUiThread(callback);
                 }
             }
@@ -188,7 +203,9 @@ public class ImageUtil {
                 setGlideImage(holder, url);
                 break;
             case FRESCO:
-                setFrescoImage(holder, url);
+                QLog.d(TAG, "Fresco does not support ImageView");
+                holder.text.setText("Fresco not supported");
+//                setFrescoImage(holder, url);
                 break;
             case UNIVERSAL_IMAGE_LOADER:
                 setUniversalImage(holder, url);
@@ -209,13 +226,16 @@ public class ImageUtil {
             @Override
             public void onLoadingStarted(String imageUri, View view) {
             }
+
             @Override
             public void onLoadingFailed(String imageUri, View view, FailReason failReason) {
             }
+
             @Override
             public void onLoadingComplete(String imageUri, View view, Bitmap loadedImage) {
-                onImageReady(holder, url, start);
+                onImageReady(holder.text, url, start);
             }
+
             @Override
             public void onLoadingCancelled(String imageUri, View view) {
             }
@@ -227,8 +247,34 @@ public class ImageUtil {
         });
     }
 
-    private void setFrescoImage(ImageVH holder, String url) {
-        // TODO
+    public void setFrescoImage(final FrescoImageVH holder, final String url) {
+        holder.text.setText("Loading...");
+
+        final long start = System.currentTimeMillis();
+
+        ControllerListener listener = new BaseControllerListener<ImageInfo>() {
+
+            @Override
+            public void onFailure(String id, Throwable throwable) {
+                super.onFailure(id, throwable);
+                QLog.w(throwable, TAG, "Fresco onFailure");
+                holder.text.setText("Fresco onFailure");
+            }
+
+            @Override
+            public void onFinalImageSet(String id, ImageInfo imageInfo, Animatable animatable) {
+                super.onFinalImageSet(id, imageInfo, animatable);
+                onImageReady(holder.text, url, start);
+            }
+        };
+        DraweeController controller = Fresco.newDraweeControllerBuilder()
+                .setControllerListener(listener)
+                .setUri(url)
+                .build();
+
+        holder.image.setController(controller);
+//        Uri uri = Uri.parse(url);
+//        holder.image.setImageURI(uri);
     }
 
     private void setGlideImage(final ImageVH holder, final String url) {
@@ -245,7 +291,7 @@ public class ImageUtil {
                     @Override
                     public boolean onResourceReady(GlideDrawable resource, String model, Target<GlideDrawable> target, boolean isFromMemoryCache, boolean isFirstResource) {
                         QLog.i(TAG, "Glide onResourceReady");
-                        onImageReady(holder, url, start);
+                        onImageReady(holder.text, url, start);
 
                         return false; // if false Glide automatically assign the image
                     }
@@ -254,14 +300,9 @@ public class ImageUtil {
 
     }
 
-    private void onImageReady(ImageVH holder, String url, long start) {
-        if (url.equals(holder.image.getTag(R.color.color_primary))) {
-            QLog.i(TAG, "Image[%s] load success & correct place", url);
-            holder.text.setText(getData(start));
-        } else {
-            QLog.w(TAG, "Image[%s] load problem, WRONG place", url);
-            holder.text.setText(String.format("%s wrong url!?", provider));
-        }
+    private void onImageReady(TextView text, String url, long start) {
+        QLog.i(TAG, "Image[%s] load success & correct place", url);
+        text.setText(getData(start));
     }
 
     private String getData(long start) {
@@ -279,7 +320,7 @@ public class ImageUtil {
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
-                                onImageReady(holder, url, start);
+                                onImageReady(holder.text, url, start);
                             }
                         });
                     }

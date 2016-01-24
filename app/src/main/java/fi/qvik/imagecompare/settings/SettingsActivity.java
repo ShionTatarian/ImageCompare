@@ -9,6 +9,7 @@ import android.widget.RadioGroup.OnCheckedChangeListener;
 
 import fi.qvik.imagecompare.BaseActivity;
 import fi.qvik.imagecompare.R;
+import fi.qvik.imagecompare.fresco.FrescoListActivity;
 import fi.qvik.imagecompare.list.MainActivity;
 import fi.qvik.imagecompare.util.ImageUtil;
 import fi.qvik.imagecompare.util.ImageUtil.ImageServiceProvider;
@@ -53,8 +54,14 @@ public class SettingsActivity extends BaseActivity {
     };
 
     public void onStartClick(View view) {
-        Intent intent = new Intent(this, MainActivity.class);
-        startActivity(intent);
+        switch (imageUtil.getProvider()) {
+            case FRESCO:
+                startActivity(new Intent(this, FrescoListActivity.class));
+                break;
+            default:
+                startActivity(new Intent(this, MainActivity.class));
+                break;
+        }
     }
 
 }
