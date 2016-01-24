@@ -14,7 +14,6 @@
         android:theme="@style/AppTheme">
         <activity
             android:name=".settings.SettingsActivity"
-            android:label="SettingsActivity"
             android:launchMode="singleTask"
             >
             <intent-filter>
@@ -24,17 +23,17 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".list.MainActivity"
-            android:label="MainActivity">
+            android:name=".list.ImageListActivity"
+            >
 
         </activity>
         <activity
             android:name=".gif.GifActivity"
-            android:label="GifActivity"
+            android:label="GIF"
             />
         <activity
             android:name=".fresco.FrescoListActivity"
-            android:label="FrescoListActivity"
+            android:label="FRESCO"
         />
 
     </application>

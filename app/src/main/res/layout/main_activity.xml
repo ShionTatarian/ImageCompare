@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    tools:context=".list.MainActivity"
+    tools:context=".list.ImageListActivity"
     >
 
     <include layout="@layout/toolbar"
@@ -21,17 +21,6 @@
         android:text="settings"
         android:layout_margin="@dimen/margin_normal"
         />
-
-    <Button
-        android:id="@+id/main_gif_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:onClick="onGifClick"
-        android:text="gif"
-        android:layout_margin="@dimen/margin_normal"
-        android:layout_toLeftOf="@id/main_settings_button"
-        />
-
 
     <android.support.v7.widget.RecyclerView
         android:id="@+id/main_recycler_view"

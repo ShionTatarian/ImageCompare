@@ -6,6 +6,7 @@ import android.support.v7.widget.RecyclerView;
 import android.text.TextUtils;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.view.View.OnLongClickListener;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -26,18 +27,20 @@ public class FrescoImageVH extends RecyclerView.ViewHolder {
         super(v);
         image = (SimpleDraweeView) v.findViewById(R.id.fresco_image_list_row_image);
         text = (TextView) v.findViewById(R.id.fresco_image_list_row_text);
-        v.setOnClickListener(onBackgroundClick);
+        v.setOnLongClickListener(onBackgroundClick);
     }
 
-    private OnClickListener onBackgroundClick = new OnClickListener() {
+    private OnLongClickListener onBackgroundClick = new OnLongClickListener() {
         @Override
-        public void onClick(View v) {
-            if(TextUtils.isEmpty(url)) {
-                return;
+        public boolean onLongClick(View v) {
+            if (TextUtils.isEmpty(url)) {
+                return false;
             }
             Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
             v.getContext().startActivity(browserIntent);
+            return true;
         }
+
     };
 
 }

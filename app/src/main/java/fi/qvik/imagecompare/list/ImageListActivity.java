@@ -8,7 +8,7 @@ import fi.qvik.imagecompare.BaseActivity;
 import fi.qvik.imagecompare.R;
 import fi.qvik.imagecompare.util.ImageUtil;
 
-public class MainActivity extends BaseActivity {
+public class ImageListActivity extends BaseActivity {
 
     private ImageUtil imageUtil = ImageUtil.getInstance();
     private RecyclerView recyclerView;
@@ -19,6 +19,7 @@ public class MainActivity extends BaseActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main_activity);
 
+        setTitle(imageUtil.getProvider().toString());
         recyclerView = (RecyclerView) findViewById(R.id.main_recycler_view);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
 

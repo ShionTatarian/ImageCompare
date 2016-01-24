@@ -68,6 +68,16 @@
         />
 
     <Button
+        android:id="@+id/main_gif_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:onClick="onGifClick"
+        android:text="Gif  testing"
+        android:layout_marginBottom="@dimen/margin_normal"
+        android:layout_toLeftOf="@id/main_settings_button"
+    />
+
+    <Button
         android:layout_width="match_parent"
         android:layout_height="120dp"
         android:text="START"

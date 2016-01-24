@@ -156,12 +156,25 @@ public class ImageUtil {
                 clearPicassoCache();
                 clearGlideCache(); // glide cache clear needs to be run outside UI thread
                 clearUniversalImageLoaderCache();
+                clearFrescoCache();
 
-                if (callback != null) {
-                    runOnUiThread(callback);
-                }
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Glide g = Glide.get(context);
+                        g.clearMemory(); // memory needs to be cleared in main thread
+
+                        if (callback != null) {
+                            callback.run();
+                        }
+                    }
+                });
             }
         });
+    }
+
+    private void clearFrescoCache() {
+        Fresco.getImagePipeline().clearCaches();
     }
 
     public void clearGlideCache() {
@@ -251,7 +264,6 @@ public class ImageUtil {
         holder.text.setText("Loading...");
 
         final long start = System.currentTimeMillis();
-
         ControllerListener listener = new BaseControllerListener<ImageInfo>() {
 
             @Override
