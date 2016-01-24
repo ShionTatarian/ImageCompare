@@ -11,6 +11,8 @@ import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.text.TextUtils;
 import android.view.View;
+import android.view.animation.AnimationUtils;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.bumptech.glide.Glide;
@@ -23,6 +25,9 @@ import com.facebook.drawee.controller.BaseControllerListener;
 import com.facebook.drawee.controller.ControllerListener;
 import com.facebook.drawee.interfaces.DraweeController;
 import com.facebook.imagepipeline.image.ImageInfo;
+import com.koushikdutta.async.future.FutureCallback;
+import com.koushikdutta.ion.Ion;
+import com.koushikdutta.ion.builder.LoadBuilder;
 import com.nostra13.universalimageloader.cache.disc.impl.UnlimitedDiskCache;
 import com.nostra13.universalimageloader.cache.disc.naming.HashCodeFileNameGenerator;
 import com.nostra13.universalimageloader.cache.memory.impl.LruMemoryCache;
@@ -85,13 +90,15 @@ public class ImageUtil {
     private final RequestManager glide;
     private final ImageLoader universalImageLoader;
     private final SharedPreferences preferences;
+    private final Ion ion;
 
     public enum ImageServiceProvider {
 
         PICASSO(R.id.settings_picasso_radio_button),
         GLIDE(R.id.settings_glide_radio_button),
         FRESCO(R.id.settings_fresco_radio_button),
-        UNIVERSAL_IMAGE_LOADER(R.id.settings_universal_image_loader),;
+        UNIVERSAL_IMAGE_LOADER(R.id.settings_universal_image_loader),
+        ION(R.id.settings_ion),;
 
         public final int checkBoxID;
 
@@ -120,6 +127,7 @@ public class ImageUtil {
 //                .writeDebugLogs()
                 .build();
         universalImageLoader.init(config);
+        ion = Ion.getDefault(context);
     }
 
     public static void init(Context ctx) {
@@ -157,6 +165,7 @@ public class ImageUtil {
                 clearGlideCache(); // glide cache clear needs to be run outside UI thread
                 clearUniversalImageLoaderCache();
                 clearFrescoCache();
+                clearIonCache();
 
                 runOnUiThread(new Runnable() {
                     @Override
@@ -171,6 +180,11 @@ public class ImageUtil {
                 });
             }
         });
+    }
+
+    private void clearIonCache() {
+        ion.getCache().clear();
+        ion.getBitmapCache().clear();
     }
 
     private void clearFrescoCache() {
@@ -223,8 +237,27 @@ public class ImageUtil {
             case UNIVERSAL_IMAGE_LOADER:
                 setUniversalImage(holder, url);
                 break;
+            case ION:
+                setIonImage(holder, url);
+                break;
 
         }
+    }
+
+    private void setIonImage(final ImageVH holder, final String url) {
+        final long start = System.currentTimeMillis();
+        ion.build(context)
+                .load(url)
+                .withBitmap()
+                .placeholder(android.R.color.transparent)
+                .animateIn(AnimationUtils.loadAnimation(context, R.anim.fade_in))
+                .intoImageView(holder.image)
+                .setCallback(new FutureCallback<ImageView>() {
+                    @Override
+                    public void onCompleted(Exception e, ImageView result) {
+                        onImageReady(holder.text, url, start);
+                    }
+                });
     }
 
     private void setUniversalImage(final ImageVH holder, final String url) {

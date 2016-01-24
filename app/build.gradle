@@ -44,4 +44,7 @@ dependencies {
 
     // Fresco
     compile 'com.facebook.fresco:fresco:0.9.0'
+
+    // ION
+    compile 'com.koushikdutta.ion:ion:2.+'
 }

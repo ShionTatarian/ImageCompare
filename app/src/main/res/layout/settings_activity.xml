@@ -52,6 +52,15 @@
             android:text="Universal Image Loader"
             />
 
+        <RadioButton
+            android:id="@+id/settings_ion"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="@dimen/margin_double"
+            android:paddingBottom="@dimen/margin_double"
+            android:text="ION"
+        />
+
     </RadioGroup>
 
 
