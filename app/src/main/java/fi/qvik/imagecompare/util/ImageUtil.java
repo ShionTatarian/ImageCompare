@@ -24,21 +24,19 @@ import com.facebook.drawee.backends.pipeline.Fresco;
 import com.facebook.drawee.controller.BaseControllerListener;
 import com.facebook.drawee.controller.ControllerListener;
 import com.facebook.drawee.interfaces.DraweeController;
+import com.facebook.imagepipeline.common.ResizeOptions;
 import com.facebook.imagepipeline.image.ImageInfo;
+import com.facebook.imagepipeline.request.ImageRequest;
+import com.facebook.imagepipeline.request.ImageRequestBuilder;
 import com.koushikdutta.async.future.FutureCallback;
 import com.koushikdutta.ion.Ion;
-import com.koushikdutta.ion.builder.LoadBuilder;
 import com.nostra13.universalimageloader.cache.disc.impl.UnlimitedDiskCache;
 import com.nostra13.universalimageloader.cache.disc.naming.HashCodeFileNameGenerator;
-import com.nostra13.universalimageloader.cache.memory.impl.LruMemoryCache;
 import com.nostra13.universalimageloader.core.DisplayImageOptions;
 import com.nostra13.universalimageloader.core.ImageLoader;
 import com.nostra13.universalimageloader.core.ImageLoaderConfiguration;
 import com.nostra13.universalimageloader.core.assist.FailReason;
-import com.nostra13.universalimageloader.core.assist.QueueProcessingType;
-import com.nostra13.universalimageloader.core.decode.BaseImageDecoder;
 import com.nostra13.universalimageloader.core.display.FadeInBitmapDisplayer;
-import com.nostra13.universalimageloader.core.download.BaseImageDownloader;
 import com.nostra13.universalimageloader.core.listener.ImageLoadingListener;
 import com.nostra13.universalimageloader.core.listener.ImageLoadingProgressListener;
 import com.squareup.picasso.Callback;
@@ -91,6 +89,8 @@ public class ImageUtil {
     private final ImageLoader universalImageLoader;
     private final SharedPreferences preferences;
     private final Ion ion;
+
+    private int imageSampleSize = 1000;
 
     public enum ImageServiceProvider {
 
@@ -312,9 +312,15 @@ public class ImageUtil {
                 onImageReady(holder.text, url, start);
             }
         };
+        Uri uri = Uri.parse(url);
+        ImageRequest request = ImageRequestBuilder.newBuilderWithSource(uri)
+                .setResizeOptions(new ResizeOptions(imageSampleSize, imageSampleSize))
+                .build();
+
         DraweeController controller = Fresco.newDraweeControllerBuilder()
                 .setControllerListener(listener)
-                .setUri(url)
+                .setImageRequest(request)
+//                .setUri(url)
                 .build();
 
         holder.image.setController(controller);
